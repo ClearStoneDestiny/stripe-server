@@ -4,7 +4,7 @@ import { BaseEntity } from '@common/entities/base-entity.entity';
 
 @Entity('refresh_tokens')
 export class RefreshToken extends BaseEntity {
-  @Column()
+  @Column({ unique: true })
   token: string;
 
   @Column({ name: 'expires_at' })

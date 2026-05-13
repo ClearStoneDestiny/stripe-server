@@ -1,4 +1,4 @@
-import { IncomingHttpHeaders } from "http";
+import { IncomingHttpHeaders } from 'http';
 
 export const getHeaderValue = (
   headers: IncomingHttpHeaders,

@@ -3,10 +3,8 @@ import { RefreshToken } from '@auth/entities/refresh-token.entity';
 import { UserRolesEnum } from '@user/enums/user-roles.enum';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 
-
 @Entity('users')
 export class User extends BaseEntity {
-  // ===== AUTH =====
   @Column({ unique: true })
   email: string;
 

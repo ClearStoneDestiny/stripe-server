@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from '@user/users.service';
 import type { Response } from 'express';
-import { AuthCredentialsDto } from '@/modules/auth/dto/inputs/auth-credentials.input';
+import { AuthCredentialsDto } from '@auth/dto/inputs/auth-credentials.input';
 import { UserRolesEnum } from '@user/enums/user-roles.enum';
 import { IUserWithRole } from '@user/interfaces/user-with-role.interface';
 
@@ -76,6 +76,14 @@ export class UsersController {
       throw new NotFoundException('User not found');
     }
 
-    return res.status(HttpStatus.OK).json(user);
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return res.status(HttpStatus.OK).json(safeUser);
   }
 }

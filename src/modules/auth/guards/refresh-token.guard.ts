@@ -4,9 +4,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthService } from '@Auth/auth.service';
-import { getRequestFromContext } from '@Common/helpers/get-request-from-context.helper';
-import { getHeaderValue } from '@/modules/common/helpers/get-header-value.helper';
+import { AuthService } from '@auth/auth.service';
+import { getRequestFromContext } from '@common/helpers/get-request-from-context.helper';
+import { getHeaderValue } from '@common/helpers/get-header-value.helper';
+import { JWT_TOKEN_SETTINGS } from '@auth/configs/jwt-token-settings.config';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -18,7 +19,7 @@ export class RefreshTokenGuard implements CanActivate {
     let refreshToken = getHeaderValue(req.headers, 'x-refresh-token');
 
     if (!refreshToken) {
-      refreshToken = req.cookies?.refreshToken;
+      refreshToken = req.cookies?.[JWT_TOKEN_SETTINGS.REFRESH_TOKEN.name];
     }
 
     if (!refreshToken) {

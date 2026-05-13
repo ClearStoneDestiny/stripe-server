@@ -7,7 +7,6 @@ import { RefreshToken } from '@auth/entities/refresh-token.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@user/entities/user.entity';
-import { sign, verify } from 'jsonwebtoken';
 import {
   ACCESS_TOKEN_LIFETIME_SEC,
   REFRESH_TOKEN_LIFETIME_MS,
@@ -22,8 +21,6 @@ export class AuthService {
   constructor(
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
     private usersService: UsersService,
     private jwtService: JwtService,
   ) {}
@@ -35,15 +32,20 @@ export class AuthService {
       role: user.role,
     };
 
-    return sign(payload, String(process.env.ACCESS_TOKEN_SECRET), {
+    return this.jwtService.sign(payload, {
+      secret: process.env.ACCESS_TOKEN_SECRET,
       expiresIn: ACCESS_TOKEN_LIFETIME_SEC,
     });
   }
 
   generateRefreshToken(): string {
-    return sign({}, String(process.env.REFRESH_TOKEN_SECRET), {
-      expiresIn: REFRESH_TOKEN_LIFETIME_SEC,
-    });
+    return this.jwtService.sign(
+      {},
+      {
+        secret: process.env.REFRESH_TOKEN_SECRET,
+        expiresIn: REFRESH_TOKEN_LIFETIME_SEC,
+      },
+    );
   }
 
   async saveRefreshToken(user: User, token: string): Promise<boolean> {
@@ -68,7 +70,9 @@ export class AuthService {
 
   async validateRefreshToken(refreshToken: string): Promise<boolean> {
     try {
-      verify(refreshToken, String(process.env.REFRESH_TOKEN_SECRET));
+      this.jwtService.verify(refreshToken, {
+        secret: process.env.REFRESH_TOKEN_SECRET,
+      });
 
       const tokenEntity = await this.findRefreshToken(refreshToken);
 
@@ -91,6 +95,12 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
   }> {
+    const isValid = await this.validateRefreshToken(token);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
     const existingToken = await this.findRefreshToken(token);
 
     if (!existingToken) {

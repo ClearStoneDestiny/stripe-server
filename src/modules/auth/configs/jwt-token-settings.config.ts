@@ -8,16 +8,16 @@ export const JWT_TOKEN_SETTINGS = {
     name: 'accessToken',
     options: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      maxAge: ACCESS_TOKEN_LIFETIME_MS, 
+      maxAge: ACCESS_TOKEN_LIFETIME_MS,
     },
   },
   REFRESH_TOKEN: {
     name: 'refreshToken',
     options: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       maxAge: REFRESH_TOKEN_LIFETIME_MS,
     },

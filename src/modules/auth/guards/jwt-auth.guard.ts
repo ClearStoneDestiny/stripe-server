@@ -1,22 +1,26 @@
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
+  Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { verify } from 'jsonwebtoken';
 import { User } from '@user/entities/user.entity';
 import { getRequestFromContext } from '@common/helpers/get-request-from-context.helper';
+import { JwtService } from '@nestjs/jwt';
+import { JWT_TOKEN_SETTINGS } from '@auth/configs/jwt-token-settings.config';
+import { ITokenPayload } from '@auth/interfaces/token-payload.interface';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  constructor(private readonly jwtService: JwtService) {}
+
   canActivate(context: ExecutionContext): boolean {
     const req = getRequestFromContext(context);
 
     let accessToken = this.extractTokenFromHeader(req);
 
     if (!accessToken) {
-      accessToken = req.cookies?.accessToken;
+      accessToken = req.cookies?.[JWT_TOKEN_SETTINGS.ACCESS_TOKEN.name];
     }
 
     if (!accessToken) {
@@ -24,10 +28,9 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const parsed = verify(
-        accessToken,
-        String(process.env.ACCESS_TOKEN_SECRET),
-      );
+      const parsed = this.jwtService.verify<ITokenPayload>(accessToken, {
+        secret: process.env.ACCESS_TOKEN_SECRET,
+      });
 
       if (typeof parsed === 'string') {
         throw new UnauthorizedException('Invalid token format');

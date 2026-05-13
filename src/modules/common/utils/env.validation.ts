@@ -1,6 +1,8 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsEnum,
+  IsIn,
+  IsNotEmpty,
   IsNumber,
   IsString,
   Max,
@@ -19,29 +21,51 @@ class EnvironmentVariables {
   NODE_ENV: Environment = Environment.Development;
 
   @IsString()
-  DB_HOST: string;
-
-  @IsNumber()
-  @Min(0)
-  @Max(65535)
-  DB_PORT: number;
+  HOST = 'localhost';
 
   @IsNumber()
   @Min(1)
   @Max(65535)
-  PORT: number;
+  PORT = 3000;
+
+  @IsNumber()
+  @Min(1)
+  @Max(65535)
+  CLIENT_PORT = 5173;
 
   @IsString()
+  @IsNotEmpty()
+  ACCESS_TOKEN_SECRET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  REFRESH_TOKEN_SECRET: string;
+
+  @IsIn(['postgres'])
+  DB_TYPE = 'postgres';
+
+  @IsString()
+  DB_HOST = 'localhost';
+
+  @IsNumber()
+  @Min(0)
+  @Max(65535)
+  DB_PORT = 5432;
+
+  @IsString()
+  @IsNotEmpty()
   DB_USER: string;
 
   @IsString()
+  @IsNotEmpty()
   DB_PASSWORD: string;
 
   @IsString()
+  @IsNotEmpty()
   DB_NAME: string;
 
-  @IsEnum(['true', 'false'])
-  SYNCHRONIZE: 'true' | 'false';
+  @IsIn(['true', 'false'])
+  SYNCHRONIZE: 'true' | 'false' = 'false';
 }
 
 export function validate(config: Record<string, unknown>) {
