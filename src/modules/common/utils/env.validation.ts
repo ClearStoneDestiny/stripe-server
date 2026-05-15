@@ -21,51 +21,29 @@ class EnvironmentVariables {
   NODE_ENV: Environment = Environment.Development;
 
   @IsString()
-  HOST = 'localhost';
-
-  @IsNumber()
-  @Min(1)
-  @Max(65535)
-  PORT = 3000;
-
-  @IsNumber()
-  @Min(1)
-  @Max(65535)
-  CLIENT_PORT = 5173;
-
-  @IsString()
-  @IsNotEmpty()
-  ACCESS_TOKEN_SECRET: string;
-
-  @IsString()
-  @IsNotEmpty()
-  REFRESH_TOKEN_SECRET: string;
-
-  @IsIn(['postgres'])
-  DB_TYPE = 'postgres';
-
-  @IsString()
-  DB_HOST = 'localhost';
+  DB_HOST: string;
 
   @IsNumber()
   @Min(0)
   @Max(65535)
-  DB_PORT = 5432;
+  DB_PORT: number;
+
+  @IsNumber()
+  @Min(1)
+  @Max(65535)
+  PORT: number;
 
   @IsString()
-  @IsNotEmpty()
   DB_USER: string;
 
   @IsString()
-  @IsNotEmpty()
   DB_PASSWORD: string;
 
   @IsString()
-  @IsNotEmpty()
   DB_NAME: string;
 
-  @IsIn(['true', 'false'])
-  SYNCHRONIZE: 'true' | 'false' = 'false';
+  @IsEnum(['true', 'false'])
+  SYNCHRONIZE: 'true' | 'false';
 }
 
 export function validate(config: Record<string, unknown>) {
