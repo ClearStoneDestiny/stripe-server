@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpStatus,
   InternalServerErrorException,
   Post,
@@ -16,6 +17,10 @@ import { type Response, type Request } from 'express';
 import { AuthCredentialsDto } from '@auth/dto/inputs/auth-credentials.input';
 import { JWT_TOKEN_SETTINGS } from '@auth/configs/jwt-token-settings.config';
 import { RefreshTokenGuard } from '@auth/guards/refresh-token.guard';
+import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
+import { CurrentUser } from '@auth/decorators/current-user.decorator';
+import type { User } from '@user/entities/user.entity';
+import type { IAuthUser } from '@auth/interfaces/auth-user.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -62,6 +67,19 @@ export class AuthController {
       message: 'Login successful',
       email,
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@CurrentUser() user: Partial<User>): IAuthUser {
+    if (!user.email) {
+      throw new UnauthorizedException('User is not authenticated');
+    }
+
+    return {
+      id: user.id ? String(user.id) : undefined,
+      email: user.email,
+    };
   }
 
   @UseGuards(RefreshTokenGuard)
