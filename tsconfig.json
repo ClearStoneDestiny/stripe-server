@@ -20,6 +20,14 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+
+    "paths": {
+      "@/*": ["src/*"],
+      "@database/*": ["src/modules/database/*"],
+      "@user/*": ["src/modules/user/*"],
+      "@common/*": ["src/modules/common/*"],
+      "@auth/*": ["src/modules/auth/*"],
+    }
   }
 }
