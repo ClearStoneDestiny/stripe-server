@@ -7,5 +7,5 @@ export const getPostgresConnection = (configService: ConfigService) => ({
   username: configService.get<string>('POSTGRES_USER'),
   password: configService.get<string>('POSTGRES_PASSWORD'),
   database: configService.get<string>('POSTGRES_NAME'),
-  synchronize: configService.get<boolean>('POSTGRES_SYNCHRONIZE'),
+  synchronize: configService.get<string>('POSTGRES_SYNCHRONIZE') === 'true',
 });

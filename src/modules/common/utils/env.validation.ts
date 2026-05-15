@@ -1,9 +1,10 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsIn,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Max,
   Min,
@@ -21,29 +22,86 @@ class EnvironmentVariables {
   NODE_ENV: Environment = Environment.Development;
 
   @IsString()
-  DB_HOST: string;
+  HOST = 'localhost';
 
-  @IsNumber()
-  @Min(0)
-  @Max(65535)
-  DB_PORT: number;
-
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(65535)
-  PORT: number;
+  PORT = 3000;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(65535)
+  CLIENT_PORT = 5173;
 
   @IsString()
-  DB_USER: string;
+  @IsNotEmpty()
+  ACCESS_TOKEN_SECRET: string;
 
   @IsString()
-  DB_PASSWORD: string;
+  @IsNotEmpty()
+  REFRESH_TOKEN_SECRET: string;
 
   @IsString()
-  DB_NAME: string;
+  @IsNotEmpty()
+  STRIPE_SECRET_KEY: string;
 
-  @IsEnum(['true', 'false'])
-  SYNCHRONIZE: 'true' | 'false';
+  @IsIn(['postgres'])
+  DB_TYPE = 'postgres';
+
+  @IsString()
+  @IsOptional()
+  DB_HOST?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(65535)
+  @IsOptional()
+  DB_PORT?: number;
+
+  @IsString()
+  @IsOptional()
+  DB_USER?: string;
+
+  @IsString()
+  @IsOptional()
+  DB_PASSWORD?: string;
+
+  @IsString()
+  @IsOptional()
+  DB_NAME?: string;
+
+  @IsIn(['true', 'false'])
+  @IsOptional()
+  SYNCHRONIZE?: 'true' | 'false';
+
+  @IsString()
+  @IsNotEmpty()
+  POSTGRES_HOST: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(65535)
+  POSTGRES_PORT: number;
+
+  @IsString()
+  @IsNotEmpty()
+  POSTGRES_USER: string;
+
+  @IsString()
+  @IsNotEmpty()
+  POSTGRES_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty()
+  POSTGRES_NAME: string;
+
+  @IsIn(['true', 'false'])
+  POSTGRES_SYNCHRONIZE: 'true' | 'false' = 'false';
 }
 
 export function validate(config: Record<string, unknown>) {
