@@ -12,7 +12,6 @@ import { getDatabaseConfig } from './configs/database.config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => ({
         ...getDatabaseConfig(configService),
-        entities: [User, RefreshToken],
         autoLoadEntities: true,
       }),
     }),
