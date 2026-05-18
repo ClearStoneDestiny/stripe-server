@@ -9,6 +9,14 @@ import { StripeProduct } from '@stripe/entities/stripe-product.entity';
 import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
 import { StripeSubscriptionItem } from '@stripe/entities/stripe-subscription-item.entity';
 import { StripeWebhookEvent } from '@stripe/entities/stripe-webhook-event.entity';
+import { Game } from '@catalog/entities/game.entity';
+import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
+import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
+import { HourPack } from '@catalog/entities/hour-pack.entity';
+import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
+import { SubscriptionPlanPrice } from '@catalog/entities/subscription-plan-price.entity';
+import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
+import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 
 dotenv.config();
 
@@ -32,6 +40,14 @@ export const AppDataSource = new DataSource({
     StripeSubscription,
     StripeSubscriptionItem,
     StripeWebhookEvent,
+    Game,
+    GameTimeBalance,
+    GameTimeTransaction,
+    HourPack,
+    SubscriptionPlan,
+    SubscriptionPlanPrice,
+    SurpriseCollectionGame,
+    SurpriseGameCollection,
   ],
   migrations: ['src/modules/databases/migrations/*.ts'],
   synchronize: true,

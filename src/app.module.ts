@@ -7,6 +7,7 @@ import { UsersModule } from '@user/users.module';
 import { AuthModule } from '@auth/auth.module';
 import { DatabaseModule } from '@database/database.module';
 import { StripeModule } from '@stripe/stripe.module';
+import { CatalogModule } from '@catalog/catalog.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StripeModule } from '@stripe/stripe.module';
     DatabaseModule,
     UsersModule,
     AuthModule,
+    CatalogModule,
     StripeModule,
   ],
   controllers: [AppController],

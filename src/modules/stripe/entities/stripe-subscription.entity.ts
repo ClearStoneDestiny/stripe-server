@@ -12,6 +12,7 @@ import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
 import { StripePrice } from '@stripe/entities/stripe-price.entity';
 import { StripeSubscriptionStatusEnum } from '@stripe/enums/stripe-subscription-status.enum';
 import { StripeSubscriptionItem } from '@stripe/entities/stripe-subscription-item.entity';
+import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
 
 /**
  * Subscription of specific users
@@ -88,6 +89,16 @@ export class StripeSubscription extends BaseEntity {
 
   @RelationId((subscription: StripeSubscription) => subscription.price)
   priceId?: number;
+
+  @ManyToOne(() => SubscriptionPlan, (plan) => plan.stripeSubscriptions, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'plan_id' })
+  plan?: SubscriptionPlan;
+
+  @RelationId((subscription: StripeSubscription) => subscription.plan)
+  planId?: number;
 
   @OneToMany(() => StripeSubscriptionItem, (item) => item.subscription, {
     cascade: true,
