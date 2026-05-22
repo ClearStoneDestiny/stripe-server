@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateSubscriptionPlanDto } from '@catalog/dto/create-subscription-plan.dto';
 import { StripeProduct } from '@stripe/entities/stripe-product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +11,12 @@ import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
 import { SubscriptionPlanPrice } from '@catalog/entities/subscription-plan-price.entity';
 import { StripePrice } from '@stripe/entities/stripe-price.entity';
 import { CreateSubscriptionPlanPriceDto } from '@catalog/dto/create-subscription-plan-price.dto';
+import { CreateGameDto } from '@catalog/dto/create-game.dto';
+import { SubscriptionPlanKindEnum } from '@catalog/enums/subscription-plan-kind.enum';
+import { Game } from '@catalog/entities/game.entity';
+import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
+import { GetGamesDto } from '@catalog/dto/get-games.dto';
+import { SubscriptionPlanCodeEnum } from './enums/subscription-plan-code.enum';
 
 @Injectable()
 export class CatalogService {
@@ -17,13 +27,16 @@ export class CatalogService {
     @InjectRepository(SubscriptionPlanPrice)
     private readonly subscriptionPlanPricesRepository: Repository<SubscriptionPlanPrice>,
 
+    @InjectRepository(Game)
+    private readonly gamesRepository: Repository<Game>,
+
     @InjectRepository(StripeProduct)
     private readonly stripeProductsRepository: Repository<StripeProduct>,
 
     @InjectRepository(StripePrice)
     private readonly stripePricesRepository: Repository<StripePrice>,
   ) {}
-  
+
   async createSubscriptionPlan(dto: CreateSubscriptionPlanDto) {
     let stripeProduct: StripeProduct | null = null;
 
@@ -88,5 +101,140 @@ export class CatalogService {
     });
 
     return this.subscriptionPlanPricesRepository.save(planPrice);
+  }
+
+  async createGame(dto: CreateGameDto) {
+    let requiredPlan: SubscriptionPlan | null = null;
+
+    if (dto.requiredPlanId) {
+      requiredPlan = await this.subscriptionPlansRepository.findOne({
+        where: {
+          id: dto.requiredPlanId,
+        },
+      });
+
+      if (!requiredPlan) {
+        throw new NotFoundException('Subscription plan not found');
+      }
+
+      if (requiredPlan.kind !== SubscriptionPlanKindEnum.TIERED) {
+        throw new BadRequestException('Game required plan must be tiered');
+      }
+    }
+
+    const game = this.gamesRepository.create({
+      slug: dto.slug,
+      title: dto.title,
+      shortDescription: dto.shortDescription,
+      description: dto.description,
+      coverImageUrl: dto.coverImageUrl,
+      heroImageUrl: dto.heroImageUrl,
+      sortOrder: dto.sortOrder ?? 0,
+      active: dto.active ?? true,
+      requiredPlan: requiredPlan ?? undefined,
+    });
+
+    return this.gamesRepository.save(game);
+  }
+
+  async updateGameRequiredPlan(gameId: number, dto: UpdateGamePlanDto) {
+    const game = await this.gamesRepository.findOne({
+      where: {
+        id: gameId,
+      },
+
+      relations: {
+        requiredPlan: true,
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    /**
+     * Remove required plan
+     */
+    if (dto.requiredPlanId === null) {
+      game.requiredPlan = undefined;
+      return this.gamesRepository.save(game);
+    }
+
+    if (dto.requiredPlanId) {
+      const requiredPlan = await this.subscriptionPlansRepository.findOne({
+        where: {
+          id: dto.requiredPlanId,
+        },
+      });
+
+      if (!requiredPlan) {
+        throw new NotFoundException('Subscription plan not found');
+      }
+
+      if (requiredPlan.kind !== SubscriptionPlanKindEnum.TIERED) {
+        throw new BadRequestException('Required plan must be tiered');
+      }
+
+      game.requiredPlan = requiredPlan;
+    }
+
+    return this.gamesRepository.save(game);
+  }
+
+  async getGames(query: GetGamesDto) {
+    const { page = 1, limit = 10, planCode } = query;
+
+    const qb = this.gamesRepository
+      .createQueryBuilder('game')
+      .leftJoinAndSelect('game.requiredPlan', 'requiredPlan')
+      .where('game.active = :active', {
+        active: true,
+      });
+
+    /**
+     * Filter by accessible subscription plan
+     */
+    if (planCode) {
+      const selectedPlan = await this.subscriptionPlansRepository.findOne({
+        where: {
+          code: planCode as SubscriptionPlanCodeEnum,
+        },
+      });
+
+      if (!selectedPlan) {
+        throw new NotFoundException('Subscription plan not found');
+      }
+
+      if (selectedPlan.kind !== SubscriptionPlanKindEnum.TIERED) {
+        throw new BadRequestException('Plan must be tiered');
+      }
+
+      qb.andWhere(
+        `
+      (
+        requiredPlan.id IS NULL
+        OR requiredPlan.sortOrder <= :sortOrder
+      )
+      `,
+        {
+          sortOrder: selectedPlan.sortOrder,
+        },
+      );
+    }
+    qb.orderBy('game.sortOrder', 'ASC');
+    qb.skip((page - 1) * limit);
+    qb.take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
