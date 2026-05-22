@@ -10,6 +10,7 @@ import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity'
 import { StripeSubscriptionItem } from '@stripe/entities/stripe-subscription-item.entity';
 import { StripePayment } from '@stripe/entities/stripe-payment.entity';
 import { StripeWebhookEvent } from '@stripe/entities/stripe-webhook-event.entity';
+import { AuthModule } from '@auth/auth.module';
 
 @Module({
   imports: [
@@ -23,9 +24,10 @@ import { StripeWebhookEvent } from '@stripe/entities/stripe-webhook-event.entity
       StripePayment,
       StripeWebhookEvent,
     ]),
+    AuthModule,
   ],
   providers: [StripeService],
   controllers: [StripeController],
-  exports: [StripeService],
+  exports: [StripeService, TypeOrmModule],
 })
 export class StripeModule {}

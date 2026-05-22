@@ -8,6 +8,11 @@ import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-ga
 import { HourPack } from '@catalog/entities/hour-pack.entity';
 import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
 import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
+import { CatalogService } from '@catalog/catalog.service';
+import { CatalogController } from '@catalog/catalog.controller';
+import { StripeService } from '@stripe/stripe.service';
+import { StripeModule } from '@stripe/stripe.module';
+import { AuthModule } from '@auth/auth.module';
 
 @Module({
   imports: [
@@ -21,7 +26,11 @@ import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.ent
       GameTimeBalance,
       GameTimeTransaction,
     ]),
+    StripeModule,
+    AuthModule,
   ],
-  exports: [TypeOrmModule],
+  controllers: [CatalogController],
+  providers: [CatalogService, StripeService],
+  exports: [TypeOrmModule, CatalogService],
 })
 export class CatalogModule {}

@@ -29,6 +29,7 @@ export class SubscriptionPlan extends BaseEntity {
   @Column({ type: 'enum', enum: SubscriptionPlanKindEnum })
   kind: SubscriptionPlanKindEnum;
 
+  // Priority level of plan
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder: number;
 
