@@ -22,7 +22,7 @@ import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
 import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
 import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 import { SURPRISE_SUBSCRIPTION_CONFIG } from '@catalog/configs/surprise-subscription.config';
-import { SurpriseCollectionResponseDto } from '@catalog/dto/surprise-collection.response';
+import { SurpriseCollectionResponseDto } from '@catalog/responses/surprise-collection.response';
 
 @Injectable()
 export class CatalogService {

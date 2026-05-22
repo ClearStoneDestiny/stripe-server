@@ -1,5 +1,5 @@
-import { SurpriseCollectionGameResponseDto } from '@catalog/dto/surprise-collection-game.response';
-import { SurprisePlanResponseDto } from '@catalog/dto/surprise-plan.response';
+import { SurpriseCollectionGameResponseDto } from '@catalog/responses/surprise-collection-game.response';
+import { SurprisePlanResponseDto } from '@catalog/responses/surprise-plan.response';
 
 export class SurpriseCollectionResponseDto {
   id: number;
