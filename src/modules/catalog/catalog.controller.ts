@@ -20,6 +20,7 @@ import { CreateGameDto } from '@catalog/dto/create-game.dto';
 import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
 import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
+import { SurpriseCollectionResponseDto } from '@catalog/dto/surprise-collection.response';
 
 @Controller('catalog')
 export class CatalogController {
@@ -80,7 +81,7 @@ export class CatalogController {
   }
 
   @Get('surprise/current')
-  getCurrentSurpriseCollection() {
+  getCurrentSurpriseCollection(): Promise<SurpriseCollectionResponseDto> {
     return this.catalogService.getCurrentSurpriseCollection();
   }
 }

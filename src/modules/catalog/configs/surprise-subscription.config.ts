@@ -5,5 +5,5 @@ export const SURPRISE_SUBSCRIPTION_CONFIG = {
     10: 70,
     20: 25,
     30: 5,
-  },
+  } as Record<number, number>,
 };

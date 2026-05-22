@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
 import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
 import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 import { SURPRISE_SUBSCRIPTION_CONFIG } from '@catalog/configs/surprise-subscription.config';
+import { SurpriseCollectionResponseDto } from '@catalog/dto/surprise-collection.response';
 
 @Injectable()
 export class CatalogService {
@@ -255,16 +257,22 @@ export class CatalogService {
     };
   }
 
-  async getCurrentSurpriseCollection() {
+  async getCurrentSurpriseCollection(): Promise<SurpriseCollectionResponseDto> {
     const { periodStart, periodEnd } = this.getCurrentMonthPeriod();
+    const periodStartDate = this.toDateColumn(periodStart);
+    const periodEndDate = this.toDateColumn(periodEnd);
+    const surprisePlan = await this.getSurprisePlan();
 
     let collection = await this.surpriseCollectionsRepository.findOne({
       where: {
-        periodStart: periodStart.toISOString().split('T')[0],
-        periodEnd: periodEnd.toISOString().split('T')[0],
+        periodStart: periodStartDate,
+        plan: {
+          id: surprisePlan.id,
+        },
         active: true,
       },
       relations: {
+        plan: true,
         games: {
           game: true,
         },
@@ -272,17 +280,7 @@ export class CatalogService {
     });
 
     if (collection) {
-      return collection;
-    }
-
-    const surprisePlan = await this.subscriptionPlansRepository.findOne({
-      where: {
-        kind: SubscriptionPlanKindEnum.SURPRISE,
-      },
-    });
-
-    if (!surprisePlan) {
-      throw new NotFoundException('Surprise plan not found');
+      return this.mapSurpriseCollectionToResponse(collection);
     }
 
     const games = await this.gamesRepository.find({
@@ -305,8 +303,8 @@ export class CatalogService {
         year: 'numeric',
       })}`,
       description: 'Monthly curated surprise games',
-      periodStart: periodStart.toISOString().split('T')[0],
-      periodEnd: periodEnd.toISOString().split('T')[0],
+      periodStart: periodStartDate,
+      periodEnd: periodEndDate,
       active: true,
       plan: surprisePlan,
       games: selectedGames.map((game, index) =>
@@ -317,9 +315,74 @@ export class CatalogService {
       ),
     });
 
-    collection = await this.surpriseCollectionsRepository.save(newCollection);
+    try {
+      collection = await this.surpriseCollectionsRepository.save(newCollection);
+    } catch (error) {
+      collection = await this.surpriseCollectionsRepository.findOne({
+        where: {
+          periodStart: periodStartDate,
+          plan: {
+            id: surprisePlan.id,
+          },
+          active: true,
+        },
+        relations: {
+          plan: true,
+          games: {
+            game: true,
+          },
+        },
+      });
 
-    return collection;
+      if (!collection) {
+        throw error;
+      }
+    }
+
+    return this.mapSurpriseCollectionToResponse(collection);
+  }
+
+  private mapSurpriseCollectionToResponse(
+    collection: SurpriseGameCollection,
+  ): SurpriseCollectionResponseDto {
+    return {
+      id: collection.id,
+      title: collection.title,
+      description: collection.description,
+      periodStart: collection.periodStart,
+      periodEnd: collection.periodEnd,
+      plan: {
+        id: collection.plan.id,
+        code: collection.plan.code,
+        name: collection.plan.name,
+      },
+      games: [...collection.games]
+        .sort((first, second) => first.sortOrder - second.sortOrder)
+        .map((collectionGame) => ({
+          id: collectionGame.game.id,
+          slug: collectionGame.game.slug,
+          title: collectionGame.game.title,
+          coverImageUrl: collectionGame.game.coverImageUrl,
+          shortDescription: collectionGame.game.shortDescription,
+          sortOrder: collectionGame.sortOrder,
+        })),
+    };
+  }
+
+  private async getSurprisePlan(): Promise<SubscriptionPlan> {
+    const surprisePlan = await this.subscriptionPlansRepository.findOne({
+      where: {
+        code: SubscriptionPlanCodeEnum.SURPRISE,
+        kind: SubscriptionPlanKindEnum.SURPRISE,
+        active: true,
+      },
+    });
+
+    if (!surprisePlan) {
+      throw new NotFoundException('Active surprise plan not found');
+    }
+
+    return surprisePlan;
   }
 
   private getCurrentMonthPeriod() {
@@ -327,7 +390,7 @@ export class CatalogService {
 
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     return {
       periodStart,
@@ -335,32 +398,33 @@ export class CatalogService {
     };
   }
 
+  private toDateColumn(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
   private getGameWeight(game: Game): number {
     const sortOrder = game.requiredPlan?.sortOrder ?? 10;
-
-    switch (sortOrder) {
-      case 10:
-        return 70;
-
-      case 20:
-        return 25;
-
-      case 30:
-        return 5;
-
-      default:
-        return 1;
-    }
+    return SURPRISE_SUBSCRIPTION_CONFIG.WEIGHTS[sortOrder] ?? 1;
   }
 
   private pickRandomWeightedGames(games: Game[], count: number): Game[] {
     const pool = [...games];
     const selected: Game[] = [];
 
+    if (pool.length === 0) {
+      throw new ConflictException(
+        'No active games available for surprise collection',
+      );
+    }
+
     while (selected.length < count && pool.length > 0) {
       const weightedPool = pool.flatMap((game) =>
         Array(this.getGameWeight(game)).fill(game),
       );
+
+      if (weightedPool.length === 0) {
+        break;
+      }
 
       const randomGame =
         weightedPool[Math.floor(Math.random() * weightedPool.length)];
