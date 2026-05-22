@@ -16,7 +16,8 @@ import { SubscriptionPlanKindEnum } from '@catalog/enums/subscription-plan-kind.
 import { Game } from '@catalog/entities/game.entity';
 import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
-import { SubscriptionPlanCodeEnum } from './enums/subscription-plan-code.enum';
+import { SubscriptionPlanCodeEnum } from '@catalog/enums/subscription-plan-code.enum';
+import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
 
 @Injectable()
 export class CatalogService {
@@ -181,7 +182,7 @@ export class CatalogService {
     return this.gamesRepository.save(game);
   }
 
-  async getGames(query: GetGamesDto) {
+  async getGames(query: GetGamesDto): Promise<GetGamesResponseDto> {
     const { page = 1, limit = 10, planCode } = query;
 
     const qb = this.gamesRepository
@@ -228,7 +229,14 @@ export class CatalogService {
     const [items, total] = await qb.getManyAndCount();
 
     return {
-      items,
+      items: items.map((game) => ({
+        id: game.id,
+        slug: game.slug,
+        title: game.title,
+        coverImageUrl: game.coverImageUrl,
+        shortDescription: game.shortDescription,
+      })),
+
       meta: {
         total,
         page,

@@ -19,6 +19,7 @@ import { UserRolesEnum } from '@user/enums/user-roles.enum';
 import { CreateGameDto } from '@catalog/dto/create-game.dto';
 import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
+import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
 
 @Controller('catalog')
 export class CatalogController {
@@ -74,8 +75,7 @@ export class CatalogController {
 
   @AuthWithRoles(UserRolesEnum.ADMIN, UserRolesEnum.USER)
   @Get('games')
-  async getGames(@Query() query: GetGamesDto) {
-    const result = await this.catalogService.getGames(query);
-    return result;
+  async getGames(@Query() query: GetGamesDto): Promise<GetGamesResponseDto> {
+    return this.catalogService.getGames(query);
   }
 }
