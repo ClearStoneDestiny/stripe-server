@@ -13,6 +13,8 @@ import { CatalogController } from '@catalog/catalog.controller';
 import { StripeService } from '@stripe/stripe.service';
 import { StripeModule } from '@stripe/stripe.module';
 import { AuthModule } from '@auth/auth.module';
+import { GameTimeController } from '@catalog/game-time.controller';
+import { GameTimeService } from '@catalog/game-time.service';
 
 @Module({
   imports: [
@@ -29,8 +31,8 @@ import { AuthModule } from '@auth/auth.module';
     StripeModule,
     AuthModule,
   ],
-  controllers: [CatalogController],
-  providers: [CatalogService, StripeService],
+  controllers: [CatalogController, GameTimeController],
+  providers: [CatalogService, StripeService, GameTimeService],
   exports: [TypeOrmModule, CatalogService],
 })
 export class CatalogModule {}

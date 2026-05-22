@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, RelationId } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { User } from '@user/entities/user.entity';
 import { StripePayment } from '@stripe/entities/stripe-payment.entity';
@@ -21,19 +21,19 @@ export class GameTimeTransaction extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, unknown>;
 
+  @Column({ name: 'user_id' })
+  userId: number;
+
   @ManyToOne(() => User, (user) => user.gameTimeTransactions, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @RelationId((transaction: GameTimeTransaction) => transaction.user)
-  userId: number;
+  @Column({ name: 'source_payment_id', nullable: true })
+  sourcePaymentId?: number;
 
   @ManyToOne(() => StripePayment, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'source_payment_id' })
   sourcePayment?: StripePayment;
-
-  @RelationId((transaction: GameTimeTransaction) => transaction.sourcePayment)
-  sourcePaymentId?: number;
 }

@@ -23,6 +23,10 @@ import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-ga
 import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 import { SURPRISE_SUBSCRIPTION_CONFIG } from '@catalog/configs/surprise-subscription.config';
 import { SurpriseCollectionResponseDto } from '@catalog/responses/surprise-collection.response';
+import { CreateHourPackDto } from '@catalog/dto/create-hour-pack.dto';
+import { HourPack } from '@catalog/entities/hour-pack.entity';
+import { GetHourPacksDto } from '@catalog/dto/get-hour-packs.dto';
+import { HourPackResponse } from '@catalog/responses/hour-pack.response';
 
 @Injectable()
 export class CatalogService {
@@ -41,6 +45,9 @@ export class CatalogService {
 
     @InjectRepository(SurpriseGameCollection)
     private readonly surpriseCollectionsRepository: Repository<SurpriseGameCollection>,
+
+    @InjectRepository(HourPack)
+    private readonly hourPacksRepository: Repository<HourPack>,
 
     @InjectRepository(StripeProduct)
     private readonly stripeProductsRepository: Repository<StripeProduct>,
@@ -340,6 +347,78 @@ export class CatalogService {
     }
 
     return this.mapSurpriseCollectionToResponse(collection);
+  }
+
+  async createHourPack(dto: CreateHourPackDto) {
+    let stripeProduct: StripeProduct | null = null;
+
+    if (dto.stripeProductId) {
+      stripeProduct = await this.stripeProductsRepository.findOne({
+        where: { id: dto.stripeProductId },
+      });
+
+      if (!stripeProduct) {
+        throw new NotFoundException('Stripe product not found');
+      }
+    }
+
+    const stripePrice = await this.stripePricesRepository.findOne({
+      where: { id: dto.stripePriceId },
+    });
+
+    if (!stripePrice) {
+      throw new NotFoundException('Stripe price not found');
+    }
+
+    const pack = this.hourPacksRepository.create({
+      code: dto.code,
+      name: dto.name,
+      description: dto.description,
+      durationMinutes: dto.durationMinutes,
+      sortOrder: dto.sortOrder ?? 0,
+      active: true,
+      stripeProduct: stripeProduct ?? undefined,
+      stripePrice,
+    });
+
+    return this.hourPacksRepository.save(pack);
+  }
+
+  async toggleHourPackActive(id: number, active: boolean) {
+    const pack = await this.hourPacksRepository.findOne({ where: { id } });
+
+    if (!pack) {
+      throw new NotFoundException('Hour pack not found');
+    }
+
+    pack.active = active;
+    return this.hourPacksRepository.save(pack);
+  }
+
+  async getHourPacks(dto: GetHourPacksDto): Promise<HourPackResponse[]> {
+    const where = dto.activeOnly ? { active: true } : {};
+
+    const packs = await this.hourPacksRepository.find({
+      where,
+      relations: ['stripePrice'],
+      order: { sortOrder: 'ASC' },
+    });
+
+    return packs.map((pack) => ({
+      id: pack.id,
+      code: pack.code,
+      name: pack.name,
+      description: pack.description,
+      durationMinutes: pack.durationMinutes,
+      durationHours: Math.round((pack.durationMinutes / 60) * 10) / 10,
+      sortOrder: pack.sortOrder,
+      stripePrice: {
+        id: pack.stripePrice.id,
+        stripePriceId: pack.stripePrice.stripePriceId,
+        unitAmount: pack.stripePrice.unitAmount,
+        currency: pack.stripePrice.currency,
+      },
+    }));
   }
 
   private mapSurpriseCollectionToResponse(
