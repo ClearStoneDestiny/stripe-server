@@ -78,4 +78,9 @@ export class CatalogController {
   async getGames(@Query() query: GetGamesDto): Promise<GetGamesResponseDto> {
     return this.catalogService.getGames(query);
   }
+
+  @Get('surprise/current')
+  getCurrentSurpriseCollection() {
+    return this.catalogService.getCurrentSurpriseCollection();
+  }
 }

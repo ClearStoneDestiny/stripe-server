@@ -5,12 +5,14 @@ import {
   ManyToOne,
   OneToMany,
   RelationId,
+  Unique,
 } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
 import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
 
 @Entity('surprise_game_collections')
+@Unique(['plan', 'periodStart'])
 export class SurpriseGameCollection extends BaseEntity {
   @Column()
   title: string;

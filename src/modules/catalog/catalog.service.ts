@@ -18,6 +18,9 @@ import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
 import { SubscriptionPlanCodeEnum } from '@catalog/enums/subscription-plan-code.enum';
 import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
+import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
+import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
+import { SURPRISE_SUBSCRIPTION_CONFIG } from '@catalog/configs/surprise-subscription.config';
 
 @Injectable()
 export class CatalogService {
@@ -30,6 +33,12 @@ export class CatalogService {
 
     @InjectRepository(Game)
     private readonly gamesRepository: Repository<Game>,
+
+    @InjectRepository(SurpriseCollectionGame)
+    private readonly surpriseCollectionGamesRepository: Repository<SurpriseCollectionGame>,
+
+    @InjectRepository(SurpriseGameCollection)
+    private readonly surpriseCollectionsRepository: Repository<SurpriseGameCollection>,
 
     @InjectRepository(StripeProduct)
     private readonly stripeProductsRepository: Repository<StripeProduct>,
@@ -187,7 +196,7 @@ export class CatalogService {
 
     const qb = this.gamesRepository
       .createQueryBuilder('game')
-      .leftJoinAndSelect('game.requiredPlan', 'requiredPlan')
+      .leftJoin('game.requiredPlan', 'requiredPlan')
       .where('game.active = :active', {
         active: true,
       });
@@ -244,5 +253,125 @@ export class CatalogService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async getCurrentSurpriseCollection() {
+    const { periodStart, periodEnd } = this.getCurrentMonthPeriod();
+
+    let collection = await this.surpriseCollectionsRepository.findOne({
+      where: {
+        periodStart: periodStart.toISOString().split('T')[0],
+        periodEnd: periodEnd.toISOString().split('T')[0],
+        active: true,
+      },
+      relations: {
+        games: {
+          game: true,
+        },
+      },
+    });
+
+    if (collection) {
+      return collection;
+    }
+
+    const surprisePlan = await this.subscriptionPlansRepository.findOne({
+      where: {
+        kind: SubscriptionPlanKindEnum.SURPRISE,
+      },
+    });
+
+    if (!surprisePlan) {
+      throw new NotFoundException('Surprise plan not found');
+    }
+
+    const games = await this.gamesRepository.find({
+      where: {
+        active: true,
+      },
+      relations: {
+        requiredPlan: true,
+      },
+    });
+
+    const selectedGames = this.pickRandomWeightedGames(
+      games,
+      SURPRISE_SUBSCRIPTION_CONFIG.GAMES_PER_MONTH,
+    );
+
+    const newCollection = this.surpriseCollectionsRepository.create({
+      title: `Surprise Collection ${periodStart.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })}`,
+      description: 'Monthly curated surprise games',
+      periodStart: periodStart.toISOString().split('T')[0],
+      periodEnd: periodEnd.toISOString().split('T')[0],
+      active: true,
+      plan: surprisePlan,
+      games: selectedGames.map((game, index) =>
+        this.surpriseCollectionGamesRepository.create({
+          game,
+          sortOrder: index,
+        }),
+      ),
+    });
+
+    collection = await this.surpriseCollectionsRepository.save(newCollection);
+
+    return collection;
+  }
+
+  private getCurrentMonthPeriod() {
+    const now = new Date();
+
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return {
+      periodStart,
+      periodEnd,
+    };
+  }
+
+  private getGameWeight(game: Game): number {
+    const sortOrder = game.requiredPlan?.sortOrder ?? 10;
+
+    switch (sortOrder) {
+      case 10:
+        return 70;
+
+      case 20:
+        return 25;
+
+      case 30:
+        return 5;
+
+      default:
+        return 1;
+    }
+  }
+
+  private pickRandomWeightedGames(games: Game[], count: number): Game[] {
+    const pool = [...games];
+    const selected: Game[] = [];
+
+    while (selected.length < count && pool.length > 0) {
+      const weightedPool = pool.flatMap((game) =>
+        Array(this.getGameWeight(game)).fill(game),
+      );
+
+      const randomGame =
+        weightedPool[Math.floor(Math.random() * weightedPool.length)];
+
+      selected.push(randomGame);
+
+      const index = pool.findIndex((g) => g.id === randomGame.id);
+
+      pool.splice(index, 1);
+    }
+
+    return selected;
   }
 }
