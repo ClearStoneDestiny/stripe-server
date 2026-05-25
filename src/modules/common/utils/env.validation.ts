@@ -48,6 +48,10 @@ class EnvironmentVariables {
   @IsNotEmpty()
   STRIPE_SECRET_KEY: string;
 
+  @IsString()
+  @IsNotEmpty()
+  STRIPE_WEBHOOK_SECRET: string;
+
   @IsIn(['postgres'])
   DB_TYPE = 'postgres';
 

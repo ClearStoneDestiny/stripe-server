@@ -31,6 +31,10 @@ export class StripeService {
     );
   }
 
+  get client(): ReturnType<typeof Stripe> {
+    return this.stripeClient;
+  }
+
   async createProduct(dto: CreateStripeProductInput) {
     const stripeProduct = await this.stripeClient.products.create({
       name: dto.name,
