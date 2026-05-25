@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { GameTimeService } from '@catalog/game-time.service';
-import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
 import { StripePayment } from '@stripe/entities/stripe-payment.entity';
 import { StripePrice } from '@stripe/entities/stripe-price.entity';
 import { StripePaymentFlowEnum } from '@stripe/enums/stripe-payment-flow.enum';
+import { StripeService } from '@stripe/stripe.service';
 import type { Stripe as StripeTypes } from 'node_modules/stripe/cjs/stripe.core';
 import { Repository } from 'typeorm';
 
@@ -14,12 +14,10 @@ export class PaymentWebhookHandler {
 
   constructor(
     private readonly gameTimeService: GameTimeService,
+    private readonly stripeService: StripeService,
 
     @InjectRepository(StripePayment)
     private readonly stripePaymentsRepository: Repository<StripePayment>,
-
-    @InjectRepository(StripeCustomer)
-    private readonly stripeCustomersRepository: Repository<StripeCustomer>,
 
     @InjectRepository(StripePrice)
     private readonly stripePricesRepository: Repository<StripePrice>,
@@ -58,14 +56,25 @@ export class PaymentWebhookHandler {
     paymentIntent: StripeTypes.PaymentIntent,
   ): Promise<void> {
     this.logger.log(`PaymentIntent succeeded: ${paymentIntent.id}`);
-    await this.updatePaymentIntentStatus(paymentIntent);
+    await this.upsertPaymentFromPaymentIntent(paymentIntent);
+
+    const userId = this.parseMetadataNumber(paymentIntent.metadata?.userId);
+    const hourPackCode = paymentIntent.metadata?.hourPackCode;
+
+    if (userId && hourPackCode) {
+      await this.gameTimeService.creditFromPayment(
+        userId,
+        hourPackCode,
+        paymentIntent.id,
+      );
+    }
   }
 
   async onPaymentIntentFailed(
     paymentIntent: StripeTypes.PaymentIntent,
   ): Promise<void> {
     this.logger.warn(`PaymentIntent failed: ${paymentIntent.id}`);
-    await this.updatePaymentIntentStatus(paymentIntent);
+    await this.upsertPaymentFromPaymentIntent(paymentIntent);
   }
 
   private async upsertPaymentFromCheckoutSession(
@@ -75,9 +84,7 @@ export class PaymentWebhookHandler {
     const paymentIntentId = this.getStripeId(session.payment_intent);
     const customerId = this.getStripeId(session.customer);
     const localCustomer = customerId
-      ? await this.stripeCustomersRepository.findOne({
-          where: { stripeCustomerId: customerId },
-        })
+      ? await this.stripeService.syncCustomerByStripeId(customerId, userId)
       : null;
     const localPrice = await this.findPriceFromSession(session);
 
@@ -117,31 +124,61 @@ export class PaymentWebhookHandler {
     );
   }
 
-  private async updatePaymentIntentStatus(
+  private async upsertPaymentFromPaymentIntent(
     paymentIntent: StripeTypes.PaymentIntent,
   ): Promise<void> {
+    const userId = this.parseMetadataNumber(paymentIntent.metadata?.userId);
+    const customerId = this.getStripeId(paymentIntent.customer);
+    const localCustomer =
+      customerId && userId
+        ? await this.stripeService.syncCustomerByStripeId(customerId, userId)
+        : null;
+    const localPrice = await this.findPriceFromMetadata(
+      paymentIntent.metadata?.stripePriceId,
+    );
     const payment = await this.stripePaymentsRepository.findOne({
       where: { stripePaymentIntentId: paymentIntent.id },
     });
 
-    if (!payment) {
+    if (!payment && !userId) {
+      this.logger.warn(
+        `PaymentIntent ${paymentIntent.id} has no userId metadata`,
+      );
       return;
     }
 
-    await this.stripePaymentsRepository.update(payment.id, {
+    const payload = {
+      stripePaymentIntentId: paymentIntent.id,
+      paymentFlow: StripePaymentFlowEnum.PAYMENT_ELEMENT,
       status: paymentIntent.status,
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
       livemode: paymentIntent.livemode,
       metadata: paymentIntent.metadata ?? {},
-    });
+      userId: payment?.userId ?? userId!,
+      customerId: localCustomer?.id ?? payment?.customerId,
+      priceId: localPrice?.id ?? payment?.priceId,
+    };
+
+    if (payment) {
+      await this.stripePaymentsRepository.update(payment.id, payload);
+      return;
+    }
+
+    await this.stripePaymentsRepository.save(
+      this.stripePaymentsRepository.create(payload),
+    );
   }
 
   private async findPriceFromSession(
     session: StripeTypes.Checkout.Session,
   ): Promise<StripePrice | null> {
-    const stripePriceId = session.metadata?.stripePriceId;
+    return this.findPriceFromMetadata(session.metadata?.stripePriceId);
+  }
 
+  private async findPriceFromMetadata(
+    stripePriceId: string | undefined,
+  ): Promise<StripePrice | null> {
     if (!stripePriceId) {
       return null;
     }

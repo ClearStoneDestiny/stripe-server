@@ -13,6 +13,9 @@ import { CatalogController } from '@catalog/catalog.controller';
 import { AuthModule } from '@auth/auth.module';
 import { GameTimeController } from '@catalog/game-time.controller';
 import { GameTimeService } from '@catalog/game-time.service';
+import { StripeProduct } from '@stripe/entities/stripe-product.entity';
+import { StripePrice } from '@stripe/entities/stripe-price.entity';
+import { StripePayment } from '@stripe/entities/stripe-payment.entity';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { GameTimeService } from '@catalog/game-time.service';
       HourPack,
       GameTimeBalance,
       GameTimeTransaction,
+      StripeProduct,
+      StripePrice,
+      StripePayment,
     ]),
     AuthModule,
   ],

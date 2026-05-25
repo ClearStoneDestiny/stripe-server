@@ -20,6 +20,11 @@ import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
 import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
 import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
 import { HourPack } from '@catalog/entities/hour-pack.entity';
+import { SubscriptionPlanPrice } from '@catalog/entities/subscription-plan-price.entity';
+import { BillingService } from '@stripe/strategies/billing.service';
+import { CheckoutStrategy } from '@stripe/strategies/checkout.strategy';
+import { PaymentElementStrategy } from '@stripe/strategies/payment-element.strategy';
+import { PaymentLinkStrategy } from '@stripe/strategies/payment-link.strategy';
 
 @Module({
   imports: [
@@ -36,6 +41,7 @@ import { HourPack } from '@catalog/entities/hour-pack.entity';
       GameTimeBalance,
       GameTimeTransaction,
       HourPack,
+      SubscriptionPlanPrice,
     ]),
     AuthModule,
     CatalogModule,
@@ -45,6 +51,10 @@ import { HourPack } from '@catalog/entities/hour-pack.entity';
     StripeWebhookService,
     SubscriptionWebhookHandler,
     PaymentWebhookHandler,
+    BillingService,
+    CheckoutStrategy,
+    PaymentElementStrategy,
+    PaymentLinkStrategy,
   ],
   controllers: [StripeController, StripeWebhookController],
   exports: [StripeService, TypeOrmModule],

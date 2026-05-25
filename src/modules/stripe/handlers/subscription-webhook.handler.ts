@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
-import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
 import { StripePrice } from '@stripe/entities/stripe-price.entity';
 import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
 import { StripeSubscriptionItem } from '@stripe/entities/stripe-subscription-item.entity';
 import { StripeSubscriptionStatusEnum } from '@stripe/enums/stripe-subscription-status.enum';
+import { StripeService } from '@stripe/stripe.service';
 import type { Stripe as StripeTypes } from 'node_modules/stripe/cjs/stripe.core';
 import { Repository } from 'typeorm';
 
@@ -14,14 +14,13 @@ export class SubscriptionWebhookHandler {
   private readonly logger = new Logger(SubscriptionWebhookHandler.name);
 
   constructor(
+    private readonly stripeService: StripeService,
+
     @InjectRepository(StripeSubscription)
     private readonly stripeSubscriptionsRepository: Repository<StripeSubscription>,
 
     @InjectRepository(StripeSubscriptionItem)
     private readonly stripeSubscriptionItemsRepository: Repository<StripeSubscriptionItem>,
-
-    @InjectRepository(StripeCustomer)
-    private readonly stripeCustomersRepository: Repository<StripeCustomer>,
 
     @InjectRepository(StripePrice)
     private readonly stripePricesRepository: Repository<StripePrice>,
@@ -94,10 +93,14 @@ export class SubscriptionWebhookHandler {
     subscription: StripeTypes.Subscription,
   ): Promise<void> {
     const customerId = this.getStripeId(subscription.customer);
+    const metadataUserId = this.parseMetadataNumber(
+      subscription.metadata?.userId,
+    );
     const customer = customerId
-      ? await this.stripeCustomersRepository.findOne({
-          where: { stripeCustomerId: customerId },
-        })
+      ? await this.stripeService.syncCustomerByStripeId(
+          customerId,
+          metadataUserId,
+        )
       : null;
 
     if (!customer) {
@@ -248,9 +251,18 @@ export class SubscriptionWebhookHandler {
   ): string | undefined {
     const invoiceWithSubscription = invoice as unknown as {
       subscription?: string | { id: string } | null;
+      parent?: {
+        subscription_details?: {
+          subscription?: string | { id: string } | null;
+        } | null;
+      } | null;
     };
 
-    return this.getStripeId(invoiceWithSubscription.subscription ?? null);
+    return this.getStripeId(
+      invoiceWithSubscription.subscription ??
+        invoiceWithSubscription.parent?.subscription_details?.subscription ??
+        null,
+    );
   }
 
   private getSubscriptionPeriod(subscription: StripeTypes.Subscription): {

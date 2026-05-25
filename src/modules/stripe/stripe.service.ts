@@ -9,6 +9,8 @@ import { CreateStripeProductInput } from '@stripe/dto/create-stripe-product.inpu
 import { CreateStripePriceInput } from '@stripe/dto/create-stripe-price.input';
 import { StripePriceTypeEnum } from '@stripe/enums/stripe-price-type.enum';
 import { StripePriceIntervalEnum } from '@stripe/enums/stripe-price-interval.enum';
+import { User } from '@user/entities/user.entity';
+import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
 
 @Injectable()
 export class StripeService {
@@ -22,6 +24,12 @@ export class StripeService {
 
     @InjectRepository(StripePrice)
     private readonly stripePricesRepository: Repository<StripePrice>,
+
+    @InjectRepository(StripeCustomer)
+    private readonly stripeCustomerRepository: Repository<StripeCustomer>,
+
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
   ) {
     this.stripeClient = new Stripe(
       this.configService.getOrThrow<string>('STRIPE_SECRET_KEY'),
@@ -96,5 +104,86 @@ export class StripeService {
     });
 
     return this.stripePricesRepository.save(price);
+  }
+
+  async getOrCreateCustomer(user: Pick<User, 'id' | 'email'>) {
+    const existingCustomer = await this.stripeCustomerRepository.findOne({
+      where: { userId: user.id },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (existingCustomer) {
+      return existingCustomer;
+    }
+
+    const customer = await this.stripeClient.customers.create({
+      email: user.email,
+      metadata: {
+        userId: String(user.id),
+      },
+    });
+
+    const localCustomer = this.stripeCustomerRepository.create({
+      stripeCustomerId: customer.id,
+      email: customer.email ?? user.email,
+      name: customer.name ?? undefined,
+      livemode: customer.livemode,
+      userId: user.id,
+    });
+
+    return this.stripeCustomerRepository.save(localCustomer);
+  }
+
+  async syncCustomerByStripeId(
+    stripeCustomerId: string,
+    fallbackUserId?: number,
+  ): Promise<StripeCustomer | null> {
+    const existingCustomer = await this.stripeCustomerRepository.findOne({
+      where: { stripeCustomerId },
+    });
+
+    if (existingCustomer) {
+      return existingCustomer;
+    }
+
+    const stripeCustomer =
+      await this.stripeClient.customers.retrieve(stripeCustomerId);
+
+    if ('deleted' in stripeCustomer && stripeCustomer.deleted) {
+      return null;
+    }
+
+    const userId =
+      this.parseMetadataNumber(stripeCustomer.metadata?.userId) ??
+      fallbackUserId;
+
+    if (!userId) {
+      return null;
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      return null;
+    }
+
+    const localCustomer = this.stripeCustomerRepository.create({
+      stripeCustomerId: stripeCustomer.id,
+      email: stripeCustomer.email ?? user.email,
+      name: stripeCustomer.name ?? undefined,
+      livemode: stripeCustomer.livemode,
+      userId: user.id,
+    });
+
+    return this.stripeCustomerRepository.save(localCustomer);
+  }
+
+  private parseMetadataNumber(value: string | undefined): number | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
   }
 }
