@@ -28,6 +28,8 @@
       "@user/*": ["src/modules/user/*"],
       "@common/*": ["src/modules/common/*"],
       "@auth/*": ["src/modules/auth/*"],
+      "@catalog/*": ["src/modules/catalog/*"],
+      "@stripe/*": ["src/modules/stripe/*"]
     }
   }
 }

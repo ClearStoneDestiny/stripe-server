@@ -2,9 +2,27 @@ import { DataSource } from 'typeorm';
 import { User } from '@user/entities/user.entity';
 import { RefreshToken } from '@auth/entities/refresh-token.entity';
 import * as dotenv from 'dotenv';
+import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
+import { StripePayment } from '@stripe/entities/stripe-payment.entity';
+import { StripePrice } from '@stripe/entities/stripe-price.entity';
+import { StripeProduct } from '@stripe/entities/stripe-product.entity';
+import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
+import { StripeSubscriptionItem } from '@stripe/entities/stripe-subscription-item.entity';
+import { StripeWebhookEvent } from '@stripe/entities/stripe-webhook-event.entity';
+import { Game } from '@catalog/entities/game.entity';
+import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
+import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
+import { HourPack } from '@catalog/entities/hour-pack.entity';
+import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
+import { SubscriptionPlanPrice } from '@catalog/entities/subscription-plan-price.entity';
+import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
+import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 
 dotenv.config();
 
+/**
+ * For migrations only
+ */
 export const AppDataSource = new DataSource({
   type: process.env.DB_TYPE as any,
   host: process.env.POSTGRES_HOST,
@@ -12,7 +30,25 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_NAME,
-  entities: [User, RefreshToken],
+  entities: [
+    User,
+    RefreshToken,
+    StripeCustomer,
+    StripePayment,
+    StripePrice,
+    StripeProduct,
+    StripeSubscription,
+    StripeSubscriptionItem,
+    StripeWebhookEvent,
+    Game,
+    GameTimeBalance,
+    GameTimeTransaction,
+    HourPack,
+    SubscriptionPlan,
+    SubscriptionPlanPrice,
+    SurpriseCollectionGame,
+    SurpriseGameCollection,
+  ],
   migrations: ['src/modules/databases/migrations/*.ts'],
   synchronize: true,
 });
