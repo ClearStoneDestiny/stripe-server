@@ -10,8 +10,6 @@ import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
 import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
 import { CatalogService } from '@catalog/catalog.service';
 import { CatalogController } from '@catalog/catalog.controller';
-import { StripeService } from '@stripe/stripe.service';
-import { StripeModule } from '@stripe/stripe.module';
 import { AuthModule } from '@auth/auth.module';
 import { GameTimeController } from '@catalog/game-time.controller';
 import { GameTimeService } from '@catalog/game-time.service';
@@ -28,11 +26,10 @@ import { GameTimeService } from '@catalog/game-time.service';
       GameTimeBalance,
       GameTimeTransaction,
     ]),
-    StripeModule,
     AuthModule,
   ],
   controllers: [CatalogController, GameTimeController],
-  providers: [CatalogService, StripeService, GameTimeService],
-  exports: [TypeOrmModule, CatalogService],
+  providers: [CatalogService, GameTimeService],
+  exports: [TypeOrmModule, CatalogService, GameTimeService],
 })
 export class CatalogModule {}

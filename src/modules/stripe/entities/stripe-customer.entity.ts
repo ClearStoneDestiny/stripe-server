@@ -1,11 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  RelationId,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { User } from '@user/entities/user.entity';
 import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
@@ -28,14 +21,14 @@ export class StripeCustomer extends BaseEntity {
   @Column({ default: false })
   livemode: boolean;
 
+  @Column({ name: 'user_id' })
+  userId: number;
+
   @ManyToOne(() => User, (user) => user.stripeCustomers, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
-
-  @RelationId((customer: StripeCustomer) => customer.user)
-  userId: number;
 
   @OneToMany(() => StripeSubscription, (subscription) => subscription.customer)
   subscriptions: StripeSubscription[];

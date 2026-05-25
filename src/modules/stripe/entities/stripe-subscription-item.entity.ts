@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, RelationId } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
 import { StripePrice } from '@stripe/entities/stripe-price.entity';
@@ -14,21 +14,21 @@ export class StripeSubscriptionItem extends BaseEntity {
   @Column({ type: 'int', default: 1 })
   quantity: number;
 
+  @Column({ name: 'subscription_id' })
+  subscriptionId: number;
+
   @ManyToOne(() => StripeSubscription, (subscription) => subscription.items, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'subscription_id' })
   subscription: StripeSubscription;
 
-  @RelationId((item: StripeSubscriptionItem) => item.subscription)
-  subscriptionId: number;
+  @Column({ name: 'price_id' })
+  priceId: number;
 
   @ManyToOne(() => StripePrice, (price) => price.subscriptionItems, {
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'price_id' })
   price: StripePrice;
-
-  @RelationId((item: StripeSubscriptionItem) => item.price)
-  priceId: number;
 }

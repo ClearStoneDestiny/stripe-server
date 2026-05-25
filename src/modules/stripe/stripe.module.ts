@@ -15,6 +15,11 @@ import { StripeWebhookService } from '@stripe/stripe-webhook.service';
 import { StripeWebhookController } from '@stripe/stripe-webhook.controller';
 import { SubscriptionWebhookHandler } from '@stripe/handlers/subscription-webhook.handler';
 import { PaymentWebhookHandler } from '@stripe/handlers/payment-webhook.handler';
+import { CatalogModule } from '@catalog/catalog.module';
+import { SubscriptionPlan } from '@catalog/entities/subscription-plan.entity';
+import { GameTimeBalance } from '@catalog/entities/game-time-balance.entity';
+import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
+import { HourPack } from '@catalog/entities/hour-pack.entity';
 
 @Module({
   imports: [
@@ -27,8 +32,13 @@ import { PaymentWebhookHandler } from '@stripe/handlers/payment-webhook.handler'
       StripeSubscriptionItem,
       StripePayment,
       StripeWebhookEvent,
+      SubscriptionPlan,
+      GameTimeBalance,
+      GameTimeTransaction,
+      HourPack,
     ]),
     AuthModule,
+    CatalogModule,
   ],
   providers: [
     StripeService,

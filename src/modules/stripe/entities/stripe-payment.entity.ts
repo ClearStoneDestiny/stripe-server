@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, RelationId } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { User } from '@user/entities/user.entity';
 import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
@@ -44,14 +44,17 @@ export class StripePayment extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, unknown>;
 
+  @Column({ name: 'user_id' })
+  userId: number;
+
   @ManyToOne(() => User, (user) => user.stripePayments, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @RelationId((payment: StripePayment) => payment.user)
-  userId: number;
+  @Column({ name: 'customer_id', nullable: true })
+  customerId?: number;
 
   @ManyToOne(() => StripeCustomer, (customer) => customer.payments, {
     nullable: true,
@@ -60,8 +63,8 @@ export class StripePayment extends BaseEntity {
   @JoinColumn({ name: 'customer_id' })
   customer?: StripeCustomer;
 
-  @RelationId((payment: StripePayment) => payment.customer)
-  customerId?: number;
+  @Column({ name: 'price_id', nullable: true })
+  priceId?: number;
 
   @ManyToOne(() => StripePrice, (price) => price.payments, {
     nullable: true,
@@ -69,7 +72,4 @@ export class StripePayment extends BaseEntity {
   })
   @JoinColumn({ name: 'price_id' })
   price?: StripePrice;
-
-  @RelationId((payment: StripePayment) => payment.price)
-  priceId?: number;
 }

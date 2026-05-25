@@ -1,11 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  RelationId,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '@common/entities/base-entity.entity';
 import { User } from '@user/entities/user.entity';
 import { StripeCustomer } from '@stripe/entities/stripe-customer.entity';
@@ -62,14 +55,17 @@ export class StripeSubscription extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, unknown>;
 
+  @Column({ name: 'user_id' })
+  userId: number;
+
   @ManyToOne(() => User, (user) => user.stripeSubscriptions, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @RelationId((subscription: StripeSubscription) => subscription.user)
-  userId: number;
+  @Column({ name: 'customer_id' })
+  customerId: number;
 
   @ManyToOne(() => StripeCustomer, (customer) => customer.subscriptions, {
     onDelete: 'CASCADE',
@@ -77,8 +73,8 @@ export class StripeSubscription extends BaseEntity {
   @JoinColumn({ name: 'customer_id' })
   customer: StripeCustomer;
 
-  @RelationId((subscription: StripeSubscription) => subscription.customer)
-  customerId: number;
+  @Column({ name: 'price_id', nullable: true })
+  priceId?: number;
 
   @ManyToOne(() => StripePrice, (price) => price.subscriptions, {
     nullable: true,
@@ -87,8 +83,8 @@ export class StripeSubscription extends BaseEntity {
   @JoinColumn({ name: 'price_id' })
   price?: StripePrice;
 
-  @RelationId((subscription: StripeSubscription) => subscription.price)
-  priceId?: number;
+  @Column({ name: 'plan_id', nullable: true })
+  planId?: number;
 
   @ManyToOne(() => SubscriptionPlan, (plan) => plan.stripeSubscriptions, {
     nullable: true,
@@ -96,9 +92,6 @@ export class StripeSubscription extends BaseEntity {
   })
   @JoinColumn({ name: 'plan_id' })
   plan?: SubscriptionPlan;
-
-  @RelationId((subscription: StripeSubscription) => subscription.plan)
-  planId?: number;
 
   @OneToMany(() => StripeSubscriptionItem, (item) => item.subscription, {
     cascade: true,
