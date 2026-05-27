@@ -8,7 +8,6 @@ export class HourPackResponse {
   sortOrder: number;
   stripePrice: {
     id: number;
-    stripePriceId: string;
     unitAmount: number;
     currency: string;
   };

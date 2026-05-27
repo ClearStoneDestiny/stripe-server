@@ -12,6 +12,7 @@ import { StripePayment } from '@stripe/entities/stripe-payment.entity';
 import { GameTimeBalanceResponse } from '@catalog/responses/game-time-balance.response';
 import { GameTimeTransactionTypeEnum } from '@catalog/enums/game-time-transaction-type.enum';
 import { AdminAdjustDto } from '@catalog/dto/admin-adjust.dto';
+import { GameTimeTransactionResponse } from '@catalog/responses/game-time-transaction.response';
 
 @Injectable()
 export class GameTimeService {
@@ -228,11 +229,30 @@ export class GameTimeService {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   }
 
-  async getTransactions(userId: number): Promise<GameTimeTransaction[]> {
-    return this.transactionRepository.find({
+  async getTransactions(
+    userId: number,
+  ): Promise<GameTimeTransactionResponse[]> {
+    const transactions = await this.transactionRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
       take: 50,
     });
+
+    return transactions.map((transaction) =>
+      this.mapTransactionToResponse(transaction),
+    );
+  }
+
+  private mapTransactionToResponse(
+    transaction: GameTimeTransaction,
+  ): GameTimeTransactionResponse {
+    return {
+      id: transaction.id,
+      type: transaction.type,
+      minutes: transaction.minutes,
+      hours: Math.round((transaction.minutes / 60) * 10) / 10,
+      reason: transaction.reason,
+      createdAt: transaction.createdAt,
+    };
   }
 }

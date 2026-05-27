@@ -4,7 +4,7 @@ import { AuthWithRoles } from '@auth/decorators/auth-with-roles.decorator';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { User } from '@user/entities/user.entity';
 import { GameTimeBalanceResponse } from '@catalog/responses/game-time-balance.response';
-import { GameTimeTransaction } from '@catalog/entities/game-time-transaction.entity';
+import { GameTimeTransactionResponse } from '@catalog/responses/game-time-transaction.response';
 import type { Response } from 'express';
 import { AdminAdjustDto } from '@catalog/dto/admin-adjust.dto';
 import { GameTimeService } from '@catalog/game-time.service';
@@ -27,7 +27,7 @@ export class GameTimeController {
   @Get('transactions')
   async getTransactions(
     @CurrentUser() user: User,
-  ): Promise<GameTimeTransaction[]> {
+  ): Promise<GameTimeTransactionResponse[]> {
     return this.gameTimeService.getTransactions(user.id);
   }
 

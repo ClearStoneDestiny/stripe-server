@@ -27,6 +27,8 @@ import { CreateHourPackDto } from '@catalog/dto/create-hour-pack.dto';
 import { HourPack } from '@catalog/entities/hour-pack.entity';
 import { GetHourPacksDto } from '@catalog/dto/get-hour-packs.dto';
 import { HourPackResponse } from '@catalog/responses/hour-pack.response';
+import { GetSubscriptionPlansDto } from '@catalog/dto/get-subscription-plans.dto';
+import { SubscriptionPlanResponse } from '@catalog/responses/subscription-plan.response';
 
 @Injectable()
 export class CatalogService {
@@ -120,6 +122,55 @@ export class CatalogService {
     });
 
     return this.subscriptionPlanPricesRepository.save(planPrice);
+  }
+
+  async getSubscriptionPlans(
+    dto: GetSubscriptionPlansDto,
+  ): Promise<SubscriptionPlanResponse[]> {
+    const plans = await this.subscriptionPlansRepository.find({
+      where: {
+        ...(dto.activeOnly ? { active: true } : {}),
+        ...(dto.kind ? { kind: dto.kind } : {}),
+      },
+      relations: {
+        prices: {
+          stripePrice: true,
+        },
+      },
+      order: {
+        sortOrder: 'ASC',
+      },
+    });
+
+    const response: SubscriptionPlanResponse[] = [];
+
+    for (const plan of plans) {
+      const prices = [...(plan.prices ?? [])]
+        .filter((price) => !dto.activeOnly || price.active)
+        .sort((first, second) => first.sortOrder - second.sortOrder);
+
+      response.push({
+        id: plan.id,
+        code: plan.code,
+        name: plan.name,
+        description: plan.description,
+        kind: plan.kind,
+        sortOrder: plan.sortOrder,
+        includedGamesCount: await this.getIncludedGamesCount(plan),
+        prices: prices.map((price) => ({
+          id: price.id,
+          label: price.label,
+          billingInterval: price.billingInterval,
+          intervalCount: price.stripePrice.intervalCount,
+          unitAmount: price.stripePrice.unitAmount,
+          currency: price.stripePrice.currency,
+          isDefault: price.isDefault,
+          sortOrder: price.sortOrder,
+        })),
+      });
+    }
+
+    return response;
   }
 
   async createGame(dto: CreateGameDto) {
@@ -414,7 +465,6 @@ export class CatalogService {
       sortOrder: pack.sortOrder,
       stripePrice: {
         id: pack.stripePrice.id,
-        stripePriceId: pack.stripePrice.stripePriceId,
         unitAmount: pack.stripePrice.unitAmount,
         currency: pack.stripePrice.currency,
       },
@@ -446,6 +496,31 @@ export class CatalogService {
           sortOrder: collectionGame.sortOrder,
         })),
     };
+  }
+
+  private async getIncludedGamesCount(plan: SubscriptionPlan): Promise<number> {
+    if (plan.kind === SubscriptionPlanKindEnum.SURPRISE) {
+      return SURPRISE_SUBSCRIPTION_CONFIG.GAMES_PER_MONTH;
+    }
+
+    if (plan.kind !== SubscriptionPlanKindEnum.TIERED) {
+      return 0;
+    }
+
+    return this.gamesRepository
+      .createQueryBuilder('game')
+      .leftJoin('game.requiredPlan', 'requiredPlan')
+      .where('game.active = :active', { active: true })
+      .andWhere(
+        `
+        (
+          requiredPlan.id IS NULL
+          OR requiredPlan.sortOrder <= :sortOrder
+        )
+        `,
+        { sortOrder: plan.sortOrder },
+      )
+      .getCount();
   }
 
   private async getSurprisePlan(): Promise<SubscriptionPlan> {

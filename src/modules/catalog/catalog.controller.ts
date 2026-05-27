@@ -24,6 +24,8 @@ import { SurpriseCollectionResponseDto } from '@catalog/responses/surprise-colle
 import { CreateHourPackDto } from '@catalog/dto/create-hour-pack.dto';
 import { GetHourPacksDto } from '@catalog/dto/get-hour-packs.dto';
 import { HourPackResponse } from '@catalog/responses/hour-pack.response';
+import { GetSubscriptionPlansDto } from '@catalog/dto/get-subscription-plans.dto';
+import { SubscriptionPlanResponse } from '@catalog/responses/subscription-plan.response';
 
 @Controller('catalog')
 export class CatalogController {
@@ -52,6 +54,14 @@ export class CatalogController {
     return res.status(HttpStatus.OK).json({
       message: 'Subscription price created',
     });
+  }
+
+  @AuthWithRoles(UserRolesEnum.ADMIN, UserRolesEnum.USER)
+  @Get('subscription-plans')
+  async getSubscriptionPlans(
+    @Query() query: GetSubscriptionPlansDto,
+  ): Promise<SubscriptionPlanResponse[]> {
+    return this.catalogService.getSubscriptionPlans(query);
   }
 
   @AuthWithRoles(UserRolesEnum.ADMIN)
@@ -110,6 +120,7 @@ export class CatalogController {
     return res.status(HttpStatus.OK).json({ message: 'Hour pack updated' });
   }
 
+  @AuthWithRoles(UserRolesEnum.ADMIN, UserRolesEnum.USER)
   @Get('hour-packs')
   async getHourPacks(
     @Query() query: GetHourPacksDto,
