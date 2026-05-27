@@ -1,4 +1,4 @@
-import { Body, Controller, HttpStatus, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post, Res } from '@nestjs/common';
 import { StripeService } from '@stripe/stripe.service';
 import { CreateStripeProductInput } from '@stripe/dto/create-stripe-product.input';
 import { CreateStripePriceInput } from '@stripe/dto/create-stripe-price.input';
@@ -45,5 +45,11 @@ export class StripeController {
     @CurrentUser() user: Partial<User>,
   ) {
     return this.billingService.createBillingSession(dto, user);
+  }
+
+  @AuthWithRoles(UserRolesEnum.ADMIN, UserRolesEnum.USER)
+  @Get('billing/subscription/current')
+  getCurrentSubscription(@CurrentUser() user: Partial<User>) {
+    return this.billingService.getCurrentSubscription(user);
   }
 }

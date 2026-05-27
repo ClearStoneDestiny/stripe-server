@@ -18,8 +18,11 @@ import { PaymentElementStrategy } from '@stripe/strategies/payment-element.strat
 import { PaymentLinkStrategy } from '@stripe/strategies/payment-link.strategy';
 import { StripeService } from '@stripe/stripe.service';
 import { User } from '@user/entities/user.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateBillingSessionDto } from '@stripe/dto/create-billing-session.dto';
+import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
+import { StripeSubscriptionStatusEnum } from '@stripe/enums/stripe-subscription-status.enum';
+import { CurrentSubscriptionResponse } from '@stripe/responses/current-subscription.response';
 
 @Injectable()
 export class BillingService {
@@ -34,6 +37,9 @@ export class BillingService {
 
     @InjectRepository(HourPack)
     private readonly hourPacksRepository: Repository<HourPack>,
+
+    @InjectRepository(StripeSubscription)
+    private readonly stripeSubscriptionsRepository: Repository<StripeSubscription>,
 
     checkoutStrategy: CheckoutStrategy,
     paymentElementStrategy: PaymentElementStrategy,
@@ -78,6 +84,73 @@ export class BillingService {
           );
 
     return strategy.execute(payload);
+  }
+
+  async getCurrentSubscription(
+    user: Partial<User>,
+  ): Promise<CurrentSubscriptionResponse> {
+    if (!user.id) {
+      throw new UnauthorizedException('User is not authenticated');
+    }
+
+    const subscription = await this.stripeSubscriptionsRepository.findOne({
+      where: {
+        userId: user.id,
+        status: In([
+          StripeSubscriptionStatusEnum.ACTIVE,
+          StripeSubscriptionStatusEnum.TRIALING,
+          StripeSubscriptionStatusEnum.PAST_DUE,
+          StripeSubscriptionStatusEnum.INCOMPLETE,
+        ]),
+      },
+      relations: {
+        plan: true,
+        price: true,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    if (!subscription) {
+      return { hasActiveAccess: false };
+    }
+
+    const hasActiveAccess = [
+      StripeSubscriptionStatusEnum.ACTIVE,
+      StripeSubscriptionStatusEnum.TRIALING,
+    ].includes(subscription.status);
+
+    return {
+      hasActiveAccess,
+      subscription: {
+        id: subscription.id,
+        status: subscription.status,
+        currentPeriodStart: subscription.currentPeriodStart,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        canceledAt: subscription.canceledAt,
+        trialEnd: subscription.trialEnd,
+        plan: subscription.plan
+          ? {
+              id: subscription.plan.id,
+              code: subscription.plan.code,
+              name: subscription.plan.name,
+              kind: subscription.plan.kind,
+              sortOrder: subscription.plan.sortOrder,
+            }
+          : undefined,
+        price: subscription.price
+          ? {
+              id: subscription.price.id,
+              unitAmount: subscription.price.unitAmount,
+              currency: subscription.price.currency,
+              interval: subscription.price.interval,
+              intervalCount: subscription.price.intervalCount,
+            }
+          : undefined,
+      },
+    };
   }
 
   private async buildSubscriptionPayload(
