@@ -212,6 +212,11 @@ export class StripeWebhookService {
           event.data.object as StripeTypes.PaymentIntent,
         );
         break;
+      case STRIPE_EVENTS.SETUP_INTENT_SUCCEEDED:
+        await this.paymentWebhookHandler.onSetupIntentSucceeded(
+          event.data.object as StripeTypes.SetupIntent,
+        );
+        break;
 
       default:
         this.logger.debug(`Unhandled event type: ${event.type}`);

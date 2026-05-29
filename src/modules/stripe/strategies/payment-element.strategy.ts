@@ -5,7 +5,6 @@ import { PaymentStrategyPayload } from '@stripe/interfaces/payment-strategy-payl
 import { PaymentStrategyResult } from '@stripe/interfaces/payment-strategy-result.interfaces';
 import { PaymentStrategy } from '@stripe/interfaces/payment-strategy.interface';
 import { StripeService } from '@stripe/stripe.service';
-import type { Stripe as StripeTypes } from 'node_modules/stripe/cjs/stripe.core';
 
 @Injectable()
 export class PaymentElementStrategy implements PaymentStrategy {
@@ -34,22 +33,32 @@ export class PaymentElementStrategy implements PaymentStrategy {
       payment_behavior: 'default_incomplete',
       payment_settings: {
         save_default_payment_method: 'on_subscription',
+        payment_method_types: ['card'],
       },
       expand: ['latest_invoice'],
-      metadata: payload.metadata,
+      metadata: {
+        ...payload.metadata,
+      },
     });
 
-    const clientSecret = this.getSubscriptionClientSecret(subscription);
+    const setupIntent = await this.stripeService.client.setupIntents.create({
+      customer: payload.customerId,
+      payment_method_types: ['card'],
+      usage: 'off_session',
+      metadata: {
+        ...payload.metadata,
+        subscriptionId: subscription.id,
+        type: 'subscription_setup',
+      },
+    });
 
-    if (!clientSecret) {
-      throw new BadRequestException(
-        'Stripe subscription has no invoice confirmation secret',
-      );
+    if (!setupIntent.client_secret) {
+      throw new BadRequestException('Setup intent has no client secret');
     }
 
     return {
       type: PaymentProviderEnum.PAYMENT_ELEMENT,
-      clientSecret,
+      clientSecret: setupIntent.client_secret,
       subscriptionId: subscription.id,
     };
   }
@@ -78,17 +87,5 @@ export class PaymentElementStrategy implements PaymentStrategy {
       clientSecret: paymentIntent.client_secret ?? undefined,
       paymentIntentId: paymentIntent.id,
     };
-  }
-
-  private getSubscriptionClientSecret(
-    subscription: StripeTypes.Subscription,
-  ): string | undefined {
-    const latestInvoice = subscription.latest_invoice as
-      | (StripeTypes.Invoice & {
-          confirmation_secret?: { client_secret?: string | null } | null;
-        })
-      | null;
-
-    return latestInvoice?.confirmation_secret?.client_secret ?? undefined;
   }
 }

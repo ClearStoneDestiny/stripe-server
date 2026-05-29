@@ -5,7 +5,7 @@ import { CreateStripePriceInput } from '@stripe/dto/create-stripe-price.input';
 import type { Response } from 'express';
 import { AuthWithRoles } from '@auth/decorators/auth-with-roles.decorator';
 import { UserRolesEnum } from '@user/enums/user-roles.enum';
-import { BillingService } from '@stripe/strategies/billing.service';
+import { BillingService } from '@stripe/billing.service';
 import { CreateBillingSessionDto } from '@stripe/dto/create-billing-session.dto';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { User } from '@user/entities/user.entity';

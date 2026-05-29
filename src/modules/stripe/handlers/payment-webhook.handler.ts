@@ -77,6 +77,81 @@ export class PaymentWebhookHandler {
     await this.upsertPaymentFromPaymentIntent(paymentIntent);
   }
 
+  async onSetupIntentSucceeded(
+    setupIntent: StripeTypes.SetupIntent,
+  ): Promise<void> {
+    this.logger.log(`Setup Intent succeeded: ${setupIntent.id}`);
+
+    const subscriptionId = setupIntent.metadata?.subscriptionId;
+
+    if (!subscriptionId) {
+      this.logger.warn('Setup Intent has no subscription ID in metadata');
+      return;
+    }
+
+    try {
+      const paymentMethodId = setupIntent.payment_method as string;
+
+      if (!paymentMethodId) {
+        this.logger.error('Setup Intent has no payment method');
+        return;
+      }
+
+      this.logger.log(
+        `Updating subscription ${subscriptionId} with payment method ${paymentMethodId}`,
+      );
+
+      const subscription = await this.stripeService.client.subscriptions.update(
+        subscriptionId,
+        {
+          default_payment_method: paymentMethodId,
+        },
+      );
+
+      this.logger.log(
+        `Subscription ${subscriptionId} updated with payment method`,
+      );
+
+      if (subscription.status === 'incomplete') {
+        const latestInvoice = subscription.latest_invoice;
+        const invoiceId =
+          typeof latestInvoice === 'string' ? latestInvoice : latestInvoice?.id;
+
+        if (invoiceId) {
+          this.logger.log(`Paying first invoice ${invoiceId}`);
+
+          try {
+            const invoice = await this.stripeService.client.invoices.pay(
+              invoiceId,
+              {
+                payment_method: paymentMethodId,
+              },
+            );
+
+            this.logger.log(`Invoice ${invoiceId} paid successfully`);
+            this.logger.log(`Invoice status: ${invoice.status}`);
+          } catch (error) {
+            this.logger.error(`Failed to pay invoice: ${error.message}`);
+            throw error;
+          }
+        } else {
+          this.logger.warn(
+            `No invoice found for subscription ${subscriptionId}`,
+          );
+        }
+      } else {
+        this.logger.log(
+          `Subscription ${subscriptionId} is already ${subscription.status}`,
+        );
+      }
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to update subscription after setup: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
   private async upsertPaymentFromCheckoutSession(
     session: StripeTypes.Checkout.Session,
     userId: number,

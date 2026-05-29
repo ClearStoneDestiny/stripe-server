@@ -20,6 +20,7 @@ export const STRIPE_EVENTS = {
   // One time payments
   PAYMENT_INTENT_SUCCEEDED: 'payment_intent.succeeded',
   PAYMENT_INTENT_FAILED: 'payment_intent.payment_failed',
+  SETUP_INTENT_SUCCEEDED: 'setup_intent.succeeded',
 } as const;
 
 export type StripeEventType =
