@@ -18,7 +18,7 @@ import { Game } from '@catalog/entities/game.entity';
 import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
 import { SubscriptionPlanCodeEnum } from '@catalog/enums/subscription-plan-code.enum';
-import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
+import { GetGamesResponseDto } from '@/modules/catalog/responses/get-games.response';
 import { SurpriseCollectionGame } from '@catalog/entities/surprise-collection-game.entity';
 import { SurpriseGameCollection } from '@catalog/entities/surprise-game-collection.entity';
 import { SURPRISE_SUBSCRIPTION_CONFIG } from '@catalog/configs/surprise-subscription.config';
@@ -29,6 +29,8 @@ import { GetHourPacksDto } from '@catalog/dto/get-hour-packs.dto';
 import { HourPackResponse } from '@catalog/responses/hour-pack.response';
 import { GetSubscriptionPlansDto } from '@catalog/dto/get-subscription-plans.dto';
 import { SubscriptionPlanResponse } from '@catalog/responses/subscription-plan.response';
+import { GameItemResponseDto } from '@catalog/responses/game-item.response';
+import { GameItemExtendedResponseDto } from '@catalog/responses/game-item-extended.response';
 
 @Injectable()
 export class CatalogService {
@@ -252,14 +254,17 @@ export class CatalogService {
   }
 
   async getGames(query: GetGamesDto): Promise<GetGamesResponseDto> {
-    const { page = 1, limit = 10, planCode } = query;
+    const { page = 1, limit = 10, planCode, search, extended = false } = query;
 
     const qb = this.gamesRepository
       .createQueryBuilder('game')
-      .leftJoin('game.requiredPlan', 'requiredPlan')
-      .where('game.active = :active', {
-        active: true,
-      });
+      .where('game.active = :active', { active: true });
+
+    if (extended) {
+      qb.leftJoinAndSelect('game.requiredPlan', 'requiredPlan');
+    } else {
+      qb.leftJoin('game.requiredPlan', 'requiredPlan');
+    }
 
     /**
      * Filter by accessible subscription plan
@@ -291,21 +296,26 @@ export class CatalogService {
         },
       );
     }
-    qb.orderBy('game.sortOrder', 'ASC');
-    qb.skip((page - 1) * limit);
-    qb.take(limit);
+
+    if (search && search.trim()) {
+      qb.andWhere('LOWER(game.title) LIKE LOWER(:search)', {
+        search: `%${search.trim()}%`,
+      });
+    }
+
+    qb.orderBy('game.sortOrder', 'ASC')
+      .addOrderBy('game.title', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     const [items, total] = await qb.getManyAndCount();
 
-    return {
-      items: items.map((game) => ({
-        id: game.id,
-        slug: game.slug,
-        title: game.title,
-        coverImageUrl: game.coverImageUrl,
-        shortDescription: game.shortDescription,
-      })),
+    const mappedItems = extended
+      ? this.mapToExtendedItems(items)
+      : this.mapToBasicItems(items);
 
+    return {
+      items: mappedItems,
       meta: {
         total,
         page,
@@ -313,6 +323,41 @@ export class CatalogService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Map games to basic response
+   */
+  private mapToBasicItems(games: Game[]): GameItemResponseDto[] {
+    return games.map((game) => ({
+      id: game.id,
+      slug: game.slug,
+      title: game.title,
+      coverImageUrl: game.coverImageUrl,
+      shortDescription: game.shortDescription,
+    }));
+  }
+
+  /**
+   * Map games to extended response
+   */
+  private mapToExtendedItems(games: Game[]): GameItemExtendedResponseDto[] {
+    return games.map((game) => ({
+      id: game.id,
+      slug: game.slug,
+      title: game.title,
+      coverImageUrl: game.coverImageUrl,
+      shortDescription: game.shortDescription,
+      description: game.description,
+      requiredPlan: game.requiredPlan
+        ? {
+            id: game.requiredPlan.id,
+            code: game.requiredPlan.code,
+            name: game.requiredPlan.name,
+            sortOrder: game.requiredPlan.sortOrder,
+          }
+        : null,
+    }));
   }
 
   async getCurrentSurpriseCollection(): Promise<SurpriseCollectionResponseDto> {

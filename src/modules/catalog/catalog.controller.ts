@@ -19,7 +19,7 @@ import { UserRolesEnum } from '@user/enums/user-roles.enum';
 import { CreateGameDto } from '@catalog/dto/create-game.dto';
 import { UpdateGamePlanDto } from '@catalog/dto/update-game-plan.dto';
 import { GetGamesDto } from '@catalog/dto/get-games.dto';
-import { GetGamesResponseDto } from '@catalog/dto/get-games-response.dto';
+import { GetGamesResponseDto } from '@/modules/catalog/responses/get-games.response';
 import { SurpriseCollectionResponseDto } from '@catalog/responses/surprise-collection.response';
 import { CreateHourPackDto } from '@catalog/dto/create-hour-pack.dto';
 import { GetHourPacksDto } from '@catalog/dto/get-hour-packs.dto';
