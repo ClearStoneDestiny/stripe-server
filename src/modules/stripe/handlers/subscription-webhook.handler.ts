@@ -51,12 +51,21 @@ export class SubscriptionWebhookHandler {
 
   async onUpdated(subscription: StripeTypes.Subscription): Promise<void> {
     this.logger.log(`Subscription updated: ${subscription.id}`);
+    this.logger.log(`New status: ${subscription.status}`);
+    this.logger.log(
+      `Cancel at period end: ${subscription.cancel_at_period_end}`,
+    );
     await this.upsertSubscription(subscription);
   }
 
   async onDeleted(subscription: StripeTypes.Subscription): Promise<void> {
     this.logger.log(`Subscription deleted: ${subscription.id}`);
+    this.logger.log(`Subscription status: ${subscription.status}`);
+    this.logger.log(`Canceled at: ${subscription.canceled_at}`);
+
     await this.upsertSubscription(subscription);
+
+    this.logger.log(`Local subscription updated for ${subscription.id}`);
   }
 
   async onInvoicePaid(invoice: StripeTypes.Invoice): Promise<void> {

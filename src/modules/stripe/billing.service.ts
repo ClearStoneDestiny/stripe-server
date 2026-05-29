@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -23,10 +24,12 @@ import { CreateBillingSessionDto } from '@stripe/dto/create-billing-session.dto'
 import { StripeSubscription } from '@stripe/entities/stripe-subscription.entity';
 import { StripeSubscriptionStatusEnum } from '@stripe/enums/stripe-subscription-status.enum';
 import { CurrentSubscriptionResponse } from '@stripe/responses/current-subscription.response';
+import { Stripe } from 'node_modules/stripe/cjs/stripe.core';
 
 @Injectable()
 export class BillingService {
   private readonly strategies: Record<PaymentProviderEnum, PaymentStrategy>;
+  private readonly logger = new Logger(BillingService.name);
 
   constructor(
     private readonly configService: ConfigService,
@@ -151,6 +154,106 @@ export class BillingService {
           : undefined,
       },
     };
+  }
+
+  async cancelSubscription(
+    user: Partial<User>,
+    immediately: boolean = false,
+  ): Promise<{ message: string; subscription: any }> {
+    if (!user.id) {
+      throw new UnauthorizedException('User is not authenticated');
+    }
+
+    const subscription = await this.stripeSubscriptionsRepository.findOne({
+      where: {
+        userId: user.id,
+        status: In([
+          StripeSubscriptionStatusEnum.ACTIVE,
+          StripeSubscriptionStatusEnum.TRIALING,
+          StripeSubscriptionStatusEnum.PAST_DUE,
+        ]),
+      },
+      relations: {
+        plan: true,
+        price: true,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    if (!subscription) {
+      throw new NotFoundException("You don't have an active subscription");
+    }
+
+    try {
+      let canceledSubscription: Stripe.Subscription;
+
+      if (immediately) {
+        canceledSubscription =
+          await this.stripeService.client.subscriptions.cancel(
+            subscription.stripeSubscriptionId,
+          );
+      } else {
+        canceledSubscription =
+          await this.stripeService.client.subscriptions.update(
+            subscription.stripeSubscriptionId,
+            {
+              cancel_at_period_end: true,
+            },
+          );
+      }
+
+      const updatePayload: Partial<StripeSubscription> = {
+        cancelAtPeriodEnd: canceledSubscription.cancel_at_period_end,
+        status: canceledSubscription.status as StripeSubscriptionStatusEnum,
+      };
+
+      if (canceledSubscription.canceled_at) {
+        updatePayload.canceledAt = new Date(
+          canceledSubscription.canceled_at * 1000,
+        );
+      }
+
+      await this.stripeSubscriptionsRepository.update(
+        { id: subscription.id },
+        updatePayload as any,
+      );
+
+      const currentPeriodEnd = this.getCurrentPeriodEnd(canceledSubscription);
+
+      const message = immediately
+        ? 'Subscription canceled immediately'
+        : `Subscription will be canceled at the end of the billing period${currentPeriodEnd ? ` (${currentPeriodEnd.toLocaleDateString()})` : ''}`;
+
+      return {
+        message,
+        subscription: {
+          id: canceledSubscription.id,
+          status: canceledSubscription.status,
+          cancelAtPeriodEnd: canceledSubscription.cancel_at_period_end,
+          currentPeriodEnd,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to cancel subscription: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException('Failed to cancel subscription');
+    }
+  }
+
+  private getCurrentPeriodEnd(
+    subscription: Stripe.Subscription,
+  ): Date | undefined {
+    const periodEnd = (subscription as any).current_period_end;
+
+    if (!periodEnd || typeof periodEnd !== 'number') {
+      return undefined;
+    }
+
+    return new Date(periodEnd * 1000);
   }
 
   private async buildSubscriptionPayload(

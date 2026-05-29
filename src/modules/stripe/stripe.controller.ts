@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpStatus, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
 import { StripeService } from '@stripe/stripe.service';
 import { CreateStripeProductInput } from '@stripe/dto/create-stripe-product.input';
 import { CreateStripePriceInput } from '@stripe/dto/create-stripe-price.input';
@@ -51,5 +60,15 @@ export class StripeController {
   @Get('billing/subscription/current')
   getCurrentSubscription(@CurrentUser() user: Partial<User>) {
     return this.billingService.getCurrentSubscription(user);
+  }
+
+  @AuthWithRoles(UserRolesEnum.ADMIN, UserRolesEnum.USER)
+  @Delete('billing/subscription')
+  cancelSubscription(
+    @CurrentUser() user: Partial<User>,
+    @Query('immediately') immediately?: string,
+  ) {
+    const cancelImmediately = immediately === 'true';
+    return this.billingService.cancelSubscription(user, cancelImmediately);
   }
 }
