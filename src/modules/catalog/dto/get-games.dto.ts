@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class GetGamesDto {
   @IsOptional()
@@ -16,9 +23,24 @@ export class GetGamesDto {
   limit?: number = 10;
 
   /**
-   * Subscription plan code
+   * Subscription plan code to filter accessible games
    */
   @IsOptional()
   @IsString()
   planCode?: string;
+
+  /**
+   * Search query for game title
+   */
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  /**
+   * Return extended information (description, required plan details)
+   */
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  extended?: boolean = false;
 }
