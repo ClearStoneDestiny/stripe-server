@@ -130,7 +130,7 @@ export class PaymentWebhookHandler {
 
             this.logger.log(`Invoice ${invoiceId} paid successfully`);
             this.logger.log(`Invoice status: ${invoice.status}`);
-          } catch (error) {
+          } catch (error: any) {
             this.logger.error(`Failed to pay invoice: ${error.message}`);
             throw error;
           }
