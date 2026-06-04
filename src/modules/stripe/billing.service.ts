@@ -330,6 +330,12 @@ export class BillingService {
   }
 
   private getClientUrl(path: string): string {
+    const clientUrl = this.configService.get<string>('CLIENT_URL');
+
+    if (clientUrl) {
+      return `${clientUrl.replace(/\/+$/, '')}${path}`;
+    }
+
     const clientPort = this.configService.get<number>('CLIENT_PORT') ?? 5173;
     return `http://localhost:${clientPort}${path}`;
   }
