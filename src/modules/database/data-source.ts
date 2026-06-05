@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { join } from 'path';
 import { User } from '@user/entities/user.entity';
 import { RefreshToken } from '@auth/entities/refresh-token.entity';
 import * as dotenv from 'dotenv';
@@ -49,6 +50,6 @@ export const AppDataSource = new DataSource({
     SurpriseCollectionGame,
     SurpriseGameCollection,
   ],
-  migrations: ['src/modules/databases/migrations/*.ts'],
-  synchronize: true,
+  migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+  synchronize: false,
 });

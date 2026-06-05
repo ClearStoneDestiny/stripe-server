@@ -37,6 +37,10 @@ class EnvironmentVariables {
   CLIENT_PORT = 5173;
 
   @IsString()
+  @IsOptional()
+  CLIENT_URL?: string;
+
+  @IsString()
   @IsNotEmpty()
   ACCESS_TOKEN_SECRET: string;
 
