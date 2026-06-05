@@ -95,6 +95,22 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           set -euo pipefail
+
+          if [[ -z "$EC2_HOST" ]]; then
+            echo "Missing required GitHub Actions secret: EC2_HOST"
+            exit 1
+          fi
+
+          if [[ -z "$EC2_USER" ]]; then
+            echo "Missing required GitHub Actions secret: EC2_USER"
+            exit 1
+          fi
+
+          if [[ -z "$EC2_SSH_KEY" ]]; then
+            echo "Missing required GitHub Actions secret: EC2_SSH_KEY"
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
           printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/ec2_key
           chmod 600 ~/.ssh/ec2_key
