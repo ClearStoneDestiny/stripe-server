@@ -33,6 +33,7 @@ services:
       PORT: 3000
       CLIENT_PORT: 5173
       CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-local_access_token_secret_change_me}
       REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-local_refresh_token_secret_change_me}
       DB_TYPE: postgres

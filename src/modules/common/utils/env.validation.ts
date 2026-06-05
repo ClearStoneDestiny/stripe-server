@@ -40,6 +40,10 @@ class EnvironmentVariables {
   @IsOptional()
   CLIENT_URL?: string;
 
+  @IsIn(['true', 'false'])
+  @IsOptional()
+  COOKIE_SECURE?: 'true' | 'false';
+
   @IsString()
   @IsNotEmpty()
   ACCESS_TOKEN_SECRET: string;
